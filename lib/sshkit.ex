@@ -311,10 +311,15 @@ defmodule SSHKit do
     cmd = Context.build(context, command)
 
     run = fn host ->
-      {:ok, conn} = SSH.connect(host.name, host.options)
-      res = SSH.run(conn, cmd)
-      :ok = SSH.close(conn)
-      res
+      case SSH.connect(host.name, host.options) do
+        {:ok, conn} ->
+          res = SSH.run(conn, cmd)
+          :ok = SSH.close(conn)
+          res
+
+        {:error, e} ->
+          {:error, e}
+      end
     end
 
     Enum.map(context.hosts, run)
@@ -357,9 +362,11 @@ defmodule SSHKit do
     target = Keyword.get(options, :as, Path.basename(source))
 
     run = fn host ->
-      {:ok, res} = SSH.connect host.name, host.options, fn conn ->
-        SCP.upload(conn, source, target, options)
-      end
+      {:ok, res} =
+        SSH.connect(host.name, host.options, fn conn ->
+          SCP.upload(conn, source, target, options)
+        end)
+
       res
     end
 
@@ -403,9 +410,11 @@ defmodule SSHKit do
     target = Keyword.get(options, :as, Path.basename(source))
 
     run = fn host ->
-      {:ok, res} = SSH.connect host.name, host.options, fn conn ->
-        SCP.download(conn, source, target, options)
-      end
+      {:ok, res} =
+        SSH.connect(host.name, host.options, fn conn ->
+          SCP.download(conn, source, target, options)
+        end)
+
       res
     end
 
