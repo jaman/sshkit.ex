@@ -332,7 +332,7 @@ defmodule SSHKit do
   defp perform(hosts, op, :parallel) do
     hosts
     |> Enum.map(fn host -> Task.async(fn -> op.(host) end) end)
-    |> Enum.map(fn task -> Task.await(taks, :infinity) end)
+    |> Enum.map(fn task -> Task.await(task, :infinity) end)
   end
 
   @doc ~S"""
