@@ -18,6 +18,23 @@ defmodule SSHKitFunctionalTest do
     end
 
     @tag boot: [@bootconf]
+    test "connects as the login user and runs commands in parallel", %{hosts: [host]} do
+      begin_time = Time.utc_now()
+
+      [{:ok, output1, 0}, {:ok, output2, 0}] =
+        [host, host]
+        |> SSHKit.context()
+        |> SSHKit.run("sleep 2; id -un", :parallel)
+
+      end_time = Time.utc_now()
+      run_time = Time.diff(end_time, begin_time, :second)
+
+      assert run_time < 4
+      assert String.trim(stdout(output1)) == host.options[:user]
+      assert String.trim(stdout(output2)) == host.options[:user]
+    end
+
+    @tag boot: [@bootconf]
     test "runs commands and returns their output and exit status", %{hosts: [host]} do
       context = SSHKit.context(host)
 
@@ -195,14 +212,17 @@ defmodule SSHKitFunctionalTest do
 
     test "with context", %{hosts: hosts} do
       local = "test/fixtures"
-      remote = "target" # path relative to context path
+      # path relative to context path
+      remote = "target"
 
       context =
         hosts
         |> SSHKit.context()
         |> SSHKit.path("/tmp")
 
-      assert [:ok, :ok] = SSHKit.upload(context, local, recursive: true, preserve: true, as: remote)
+      assert [:ok, :ok] =
+               SSHKit.upload(context, local, recursive: true, preserve: true, as: remote)
+
       assert verify_transfer(context, local, Path.join(context.path, remote))
       assert verify_mode(context, local, Path.join(context.path, remote))
       assert verify_mtime(context, local, Path.join(context.path, remote))
@@ -216,7 +236,7 @@ defmodule SSHKitFunctionalTest do
       tmpdir = create_local_tmp_path()
 
       :ok = File.mkdir!(tmpdir)
-      on_exit fn -> File.rm_rf(tmpdir) end
+      on_exit(fn -> File.rm_rf(tmpdir) end)
 
       {:ok, tmpdir: tmpdir}
     end
@@ -266,7 +286,8 @@ defmodule SSHKitFunctionalTest do
     end
 
     test "with context", %{hosts: hosts, tmpdir: tmpdir} do
-      remote = "fixtures" # path relative to context path
+      # path relative to context path
+      remote = "fixtures"
       local = Path.join(tmpdir, "fixtures")
 
       context =
